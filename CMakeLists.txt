@@ -39,6 +39,7 @@ elseif(UNIX AND NOT APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lstdc++fs -lrt")
 endif()
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib/parallel-hashmap)
 
 # Create and link the C++ module using nanobind
 nanobind_add_module(

@@ -6,13 +6,21 @@
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/vector.h>
 #include <nanobind/stl/unordered_map.h>
+#include <parallel_hashmap/phmap.h>
+#include <mutex>
 
 namespace nb = nanobind;
 using namespace std;
 
 class HashesCounter {
 private:
-    unordered_map<uint64_t, uint32_t> hash_to_count;
+    phmap::parallel_flat_hash_map<
+    uint64_t, uint32_t,
+    std::hash<uint64_t>,
+    std::equal_to<uint64_t>,
+    std::allocator<std::pair<uint64_t, uint32_t>>,
+    6,
+    std::mutex> hash_to_count;
 
 public:
     HashesCounter() {}
@@ -51,7 +59,11 @@ public:
     }
 
     unordered_map<uint64_t, uint32_t> get_kmers() {
-        return hash_to_count;
+        unordered_map<uint64_t, uint32_t> result;
+        for (auto it = hash_to_count.begin(); it != hash_to_count.end(); ++it) {
+            result[it->first] = it->second;
+        }
+        return result;
     }
 };
 
