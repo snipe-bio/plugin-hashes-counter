@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/snipe-bio/pangenome-plugin"
+Homepage = "https://github.com/snipe-bio/hashes-counter"
 
 
 [project.entry-points."snipe.plugins"]
