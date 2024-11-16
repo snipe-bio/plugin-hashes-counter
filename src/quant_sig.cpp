@@ -101,7 +101,9 @@ public:
     {
         for (size_t i = 0; i < hashes.size(); i++)
         {
-            hash_to_score[hashes[i]] += abundances[i] / mean_abundance;
+            double score = abundances[i] / mean_abundance;
+            if (score >= 1) hash_to_score[hashes[i]]++;
+            else hash_to_score[hashes[i]] += score;
         }
     }
 
