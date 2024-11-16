@@ -94,6 +94,7 @@ private:
     phmap::parallel_flat_hash_map<uint64_t, float, std::hash<uint64_t>, std::equal_to<uint64_t>, std::allocator<std::pair<uint64_t, float>>, 
     6, std::mutex> hash_to_score;
 
+public:
     void add_hashes(const vector<uint64_t> &hashes, const vector<float> &abundances, float mean_abundance)
     {
         for (size_t i = 0; i < hashes.size(); i++)
