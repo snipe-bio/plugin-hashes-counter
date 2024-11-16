@@ -95,6 +95,8 @@ private:
     6, std::mutex> hash_to_score;
 
 public:
+    WeightedHashesCounter() {}
+
     void add_hashes(const vector<uint64_t> &hashes, const vector<float> &abundances, float mean_abundance)
     {
         for (size_t i = 0; i < hashes.size(); i++)
@@ -152,26 +154,23 @@ public:
             }
         }
     }
-
-
 };
 
-public:
-    NB_MODULE(_hashes_counter_impl, m)
-    {
-        nb::class_<HashesCounter>(m, "HashesCounter")
-            .def(nb::init<>())
-            .def("add_hashes", &HashesCounter::add_hashes)
-            .def("remove_singletons", &HashesCounter::remove_singletons)
-            .def("keep_min_abundance", &HashesCounter::keep_min_abundance)
-            .def("get_kmers", &HashesCounter::get_kmers)
-            .def("size", &HashesCounter::size);
+NB_MODULE(_hashes_counter_impl, m)
+{
+    nb::class_<HashesCounter>(m, "HashesCounter")
+        .def(nb::init<>())
+        .def("add_hashes", &HashesCounter::add_hashes)
+        .def("remove_singletons", &HashesCounter::remove_singletons)
+        .def("keep_min_abundance", &HashesCounter::keep_min_abundance)
+        .def("get_kmers", &HashesCounter::get_kmers)
+        .def("size", &HashesCounter::size);
 
-        nb::class_<WeightedHashesCounter>(m, "WeightedHashesCounter")
-            .def(nb::init<>())
-            .def("add_hashes", &WeightedHashesCounter::add_hashes)
-            .def("round_scores", &WeightedHashesCounter::round_scores)
-            .def("get_kmers", &WeightedHashesCounter::get_kmers)
-            .def("size", &WeightedHashesCounter::size);
-    }
+    nb::class_<WeightedHashesCounter>(m, "WeightedHashesCounter")
+        .def(nb::init<>())
+        .def("add_hashes", &WeightedHashesCounter::add_hashes)
+        .def("round_scores", &WeightedHashesCounter::round_scores)
+        .def("get_kmers", &WeightedHashesCounter::get_kmers)
+        .def("size", &WeightedHashesCounter::size);
+}
 
