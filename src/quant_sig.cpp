@@ -99,12 +99,12 @@ public:
 
     void add_hashes(const vector<uint64_t> &hashes, const vector<float> &abundances, float mean_abundance)
     {
-        const float invMeanAbundance = 1.0f / meanAbundance; // Precompute reciprocal for faster division
+        const float inv_mean_abundance = 1.0f / mean_abundance; // Precompute reciprocal for faster division
         const size_t n = hashes.size(); // Cache the size for efficiency
 
         for (size_t i = 0; i < n; i++)
         {
-            double score = abundances[i] * invMeanAbundance;
+            double score = abundances[i] * inv_mean_abundance;
             if (score < 1) hash_to_score[hashes[i]] += score;
             else if (score > 2) hash_to_score[hashes[i]] += 2;
             else hash_to_score[hashes[i]] += score;
