@@ -105,8 +105,7 @@ public:
         for (size_t i = 0; i < n; i++)
         {
             double score = abundances[i] * inv_mean_abundance;
-            if (score < 1) hash_to_score[hashes[i]] += score;
-            else if (score > 2) hash_to_score[hashes[i]] += 2;
+            if (score >= 2) hash_to_score[hashes[i]] += 2;
             else hash_to_score[hashes[i]] += score;
         }
     }
