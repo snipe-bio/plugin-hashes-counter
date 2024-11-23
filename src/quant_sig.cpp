@@ -86,13 +86,15 @@ public:
 
 class WeightedHashesCounter
 {
-private:
+protected:
     phmap::parallel_flat_hash_map<uint64_t, uint32_t, std::hash<uint64_t>,
-        std::equal_to<uint64_t>, std::allocator<std::pair<uint64_t, uint32_t>>,
-        6, std::mutex> hash_to_count;
+                                  std::equal_to<uint64_t>, std::allocator<std::pair<uint64_t, uint32_t>>,
+                                  6, std::mutex>
+        hash_to_count;
 
-    phmap::parallel_flat_hash_map<uint64_t, float, std::hash<uint64_t>, std::equal_to<uint64_t>, std::allocator<std::pair<uint64_t, float>>, 
-    6, std::mutex> hash_to_score;
+    phmap::parallel_flat_hash_map<uint64_t, float, std::hash<uint64_t>, std::equal_to<uint64_t>, std::allocator<std::pair<uint64_t, float>>,
+                                  6, std::mutex>
+        hash_to_score;
 
 public:
     WeightedHashesCounter() {}
@@ -100,21 +102,23 @@ public:
     void add_hashes(const vector<uint64_t> &hashes, const vector<float> &abundances, float mean_abundance)
     {
         const float inv_mean_abundance = 1.0f / mean_abundance; // Precompute reciprocal for faster division
-        const size_t n = hashes.size(); // Cache the size for efficiency
+        const size_t n = hashes.size();                         // Cache the size for efficiency
 
         for (size_t i = 0; i < n; i++)
         {
             double score = abundances[i] * inv_mean_abundance;
-            if (score >= 2) hash_to_score[hashes[i]] += 2;
-            else hash_to_score[hashes[i]] += score;
+            if (score >= 2)
+                hash_to_score[hashes[i]] += 2;
+            else
+                hash_to_score[hashes[i]] += score;
         }
     }
 
     uint64_t round_scores()
-    {   
+    {
         uint64_t skipped_hashes_after_rounding = 0;
         for (auto it = hash_to_score.begin(); it != hash_to_score.end(); ++it)
-        {   
+        {
             uint32_t rounded_score = static_cast<uint32_t>(it->second);
             if (rounded_score > 1)
             {
@@ -161,8 +165,7 @@ public:
     }
 };
 
-// inherit WeightedHashesCounter in WeightedHashesCounterUncapped
-class WeightedHashesCounterUncapped : public WeightedHashesCounter
+class WeightedHashesCounterUncapped : WeightedHashesCounter
 {
 public:
     WeightedHashesCounterUncapped() : WeightedHashesCounter() {}
@@ -178,8 +181,6 @@ public:
         }
     }
 };
-
-
 
 NB_MODULE(_hashes_counter_impl, m)
 {
