@@ -5,7 +5,7 @@ import sys
 from typing import List
 import numpy as np
 from tqdm import tqdm
-from ._hashes_counter_impl import HashesCounter, WeightedHashesCounter
+from ._hashes_counter_impl import HashesCounter, WeightedHashesCounter, WeightedHashesCounterUncapped
 from snipe import SnipeSig, SigType
 
 logger = logging.getLogger(__name__)
@@ -66,6 +66,12 @@ for handler in root_logger.handlers:
     default=False,
     help='Use weighted hashes counter.',
 )
+@click.option(
+    '--uncapped',
+    is_flag=True,
+    default=False,
+    help='Use uncapped weighted hashes counter.',
+)
 def hashes_counter(
     signature_paths: List[str],
     samples_from_file: str,
@@ -73,6 +79,7 @@ def hashes_counter(
     name: str,
     min_abund: int,
     weighted: bool,
+    uncapped: bool,
 ):
     """
     Snipe plugin for high-throughput counting of k-mers.
@@ -100,8 +107,14 @@ def hashes_counter(
         logger.info(f"Counting hashes from {len(all_signature_paths)} signatures.")
         
         if weighted:
-            counter = WeightedHashesCounter()
+            if uncapped:
+                logger.info("Using uncapped WeightedHashesCounter.")
+                counter = WeightedHashesCounterUncapped()
+            else:
+                logger.info("Using WeightedHashesCounter.")
+                counter = WeightedHashesCounter()
         else:
+            logger.info("Using HashesCounter.")
             counter = HashesCounter()
         
         first_sig_path = all_signature_paths[0]

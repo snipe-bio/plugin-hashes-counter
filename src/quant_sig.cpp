@@ -161,6 +161,26 @@ public:
     }
 };
 
+// inherit WeightedHashesCounter in WeightedHashesCounterUncapped
+class WeightedHashesCounterUncapped : public WeightedHashesCounter
+{
+public:
+    WeightedHashesCounterUncapped() : WeightedHashesCounter() {}
+
+    void add_hashes(const vector<uint64_t> &hashes, const vector<float> &abundances, float mean_abundance)
+    {
+        const float inv_mean_abundance = 1.0f / mean_abundance;
+        const size_t n = hashes.size();
+
+        for (size_t i = 0; i < n; i++)
+        {
+            hash_to_score[hashes[i]] += abundances[i] * inv_mean_abundance;
+        }
+    }
+};
+
+
+
 NB_MODULE(_hashes_counter_impl, m)
 {
     nb::class_<HashesCounter>(m, "HashesCounter")
@@ -177,5 +197,12 @@ NB_MODULE(_hashes_counter_impl, m)
         .def("round_scores", &WeightedHashesCounter::round_scores)
         .def("get_kmers", &WeightedHashesCounter::get_kmers)
         .def("size", &WeightedHashesCounter::size);
-}
 
+    nb::class_<WeightedHashesCounterUncapped>(m, "WeightedHashesCounterUncapped")
+        .def(nb::init<>())
+        .def("add_hashes", &WeightedHashesCounterUncapped::add_hashes)
+        .def("round_scores", &WeightedHashesCounterUncapped::round_scores)
+        .def("get_kmers", &WeightedHashesCounterUncapped::get_kmers)
+        .def("size", &WeightedHashesCounterUncapped::size)
+        .def("keep_min_abundance", &WeightedHashesCounterUncapped::keep_min_abundance);
+}
