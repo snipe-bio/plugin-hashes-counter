@@ -165,7 +165,7 @@ public:
     }
 };
 
-class WeightedHashesCounterUncapped : WeightedHashesCounter
+class WeightedHashesCounterUncapped : public WeightedHashesCounter
 {
 public:
     WeightedHashesCounterUncapped() : WeightedHashesCounter() {}
