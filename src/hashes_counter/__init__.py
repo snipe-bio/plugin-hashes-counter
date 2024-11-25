@@ -169,7 +169,7 @@ def hashes_counter(
             counter.keep_min_abundance(min_abund)
             logger.info(f"Kept only k-mers with abundance >= {min_abund}, current size: {counter.size()}.")
         
-        if not hybrid:
+        if weighted or not hybrid:
             hash_to_abundance = counter.get_kmers()
             out_hashes = np.array(list(hash_to_abundance.keys()))
             out_abundances = np.array(list(hash_to_abundance.values()))
@@ -186,7 +186,7 @@ def hashes_counter(
             logger.info(f"Exporting signature to: {output}")
             out_sig.export(output)
             logger.info("Signature export completed successfully.")
-        else:
+        elif hybrid:
             hashes = np.array(counter.get_hashes())
             sample_counts = np.array(counter.get_sample_counts())
             kmer_dosages = np.array(counter.get_kmer_dosages())
@@ -213,7 +213,9 @@ def hashes_counter(
             out_sig1.export(output.replace('.sig', '_sample_counts.sig'))
             out_sig2.export(output.replace('.sig', '_kmer_dosages.sig'))
             logger.info("Signatures export completed successfully")
-            
+        else:
+            logger.error("Invalid state.")
+            sys.exit(1)
             
             
     except Exception as e:
