@@ -151,7 +151,7 @@ def hashes_counter(
             if snipe_sig.scale != auto_detected_scale or snipe_sig.ksize != auto_detected_ksize:
                 logger.error(f"Signature '{sig_path}' has inconsistent scale or ksize.")
                 sys.exit(1)
-            if weighted:
+            if weighted or hybrid:
                 counter.add_hashes(snipe_sig.hashes, snipe_sig.abundances, snipe_sig.mean_abundance)
             else:
                 counter.add_hashes(snipe_sig.hashes)
