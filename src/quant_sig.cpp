@@ -311,8 +311,8 @@ NB_MODULE(_hashes_counter_impl, m)
         .def("add_hashes", &SamplesKmerDosageHybridCounter::add_hashes)
         .def("round_scores", &SamplesKmerDosageHybridCounter::round_scores)
         .def("size", &SamplesKmerDosageHybridCounter::size),
-        .def("get_kmers", &SamplesKmerDosageHybridCounter::get_kmers)
-        .def("get_hashes", &SamplesKmerDosageHybridCounter::get_hashes)
-        .def("get_sample_counts", &SamplesKmerDosageHybridCounter::get_sample_counts)
+        .def("get_kmers", &SamplesKmerDosageHybridCounter::get_kmers),
+        .def("get_hashes", &SamplesKmerDosageHybridCounter::get_hashes),
+        .def("get_sample_counts", &SamplesKmerDosageHybridCounter::get_sample_counts),
         .def("get_kmer_dosages", &SamplesKmerDosageHybridCounter::get_kmer_dosages);
 }
