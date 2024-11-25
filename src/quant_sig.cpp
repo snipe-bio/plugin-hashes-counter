@@ -231,14 +231,15 @@ public:
         return hash_to_count.size();
     }
 
-    // round scores and remove entries with count less than 2
     uint64_t round_scores()
     {
         uint64_t skipped_hashes_after_rounding = 0;
         for (auto it = hash_to_count.begin(); it != hash_to_count.end();)
         {
             uint32_t &count = std::get<0>(it->second);
-            if (count < 2)
+            float dosage = std::get<1>(it->second);
+
+            if (count < 2 || dosage < 2.0f)
             {
                 skipped_hashes_after_rounding++;
                 it = hash_to_count.erase(it);
