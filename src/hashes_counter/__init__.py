@@ -92,6 +92,13 @@ def hashes_counter(
     Snipe plugin for high-throughput counting of k-mers.
     SIGNATURE_PATHS can include wildcards (e.g., *.sig, *.zip).
     """
+    
+    # can't use hybrid and weighted at the same time
+    if hybrid and weighted:
+        logger.error("Options --weighted and --hybrid are mutually exclusive.")
+        sys.exit(1)
+    
+    
     try:
         
         all_signature_paths = list(signature_paths)
