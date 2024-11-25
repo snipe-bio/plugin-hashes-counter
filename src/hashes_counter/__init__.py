@@ -5,7 +5,7 @@ import sys
 from typing import List
 import numpy as np
 from tqdm import tqdm
-from ._hashes_counter_impl import HashesCounter, WeightedHashesCounter, WeightedHashesCounterUncapped
+from ._hashes_counter_impl import HashesCounter, WeightedHashesCounter, WeightedHashesCounterUncapped, SamplesKmerDosageHybridCounter
 from snipe import SnipeSig, SigType
 
 logger = logging.getLogger(__name__)
@@ -72,6 +72,12 @@ for handler in root_logger.handlers:
     default=False,
     help='Use uncapped weighted hashes counter.',
 )
+@click.option(
+    '--hybrid',
+    is_flag=True,
+    default=False,
+    help='Use hybrid hashes counter (sample freq + kmer dosage).',
+)
 def hashes_counter(
     signature_paths: List[str],
     samples_from_file: str,
@@ -80,6 +86,7 @@ def hashes_counter(
     min_abund: int,
     weighted: bool,
     uncapped: bool,
+    hybrid: bool,
 ):
     """
     Snipe plugin for high-throughput counting of k-mers.
@@ -113,6 +120,9 @@ def hashes_counter(
             else:
                 logger.info("Using WeightedHashesCounter.")
                 counter = WeightedHashesCounter()
+        elif hybrid:
+            logger.info("Using SamplesKmerDosageHybridCounter.")
+            counter = SamplesKmerDosageHybridCounter()
         else:
             logger.info("Using HashesCounter.")
             counter = HashesCounter()
@@ -122,7 +132,7 @@ def hashes_counter(
         first_sig = SnipeSig(sourmash_sig=first_sig_path, sig_type=SigType.SAMPLE)
         auto_detected_scale = first_sig.scale
         auto_detected_ksize = first_sig.ksize
-        if weighted:
+        if weighted or hybrid:
             counter.add_hashes(first_sig.hashes, first_sig.abundances, first_sig.mean_abundance)
         else:
             counter.add_hashes(first_sig.hashes)
@@ -138,7 +148,7 @@ def hashes_counter(
                 counter.add_hashes(snipe_sig.hashes, snipe_sig.abundances, snipe_sig.mean_abundance)
             else:
                 counter.add_hashes(snipe_sig.hashes)
-        if weighted:
+        if weighted or hybrid:
             logger.info("Rounding scores in WeightedHashesCounter.")
             skipped_hashes = counter.round_scores()
             logger.info(f"Skipped {skipped_hashes} hashes with <2 after rounding.")
@@ -152,22 +162,54 @@ def hashes_counter(
             counter.keep_min_abundance(min_abund)
             logger.info(f"Kept only k-mers with abundance >= {min_abund}, current size: {counter.size()}.")
         
-        hash_to_abundance = counter.get_kmers()
-        out_hashes = np.array(list(hash_to_abundance.keys()))
-        out_abundances = np.array(list(hash_to_abundance.values()))
-        
-        logger.info("Creating output signature.")
-        out_sig = SnipeSig.create_from_hashes_abundances(
-            hashes=out_hashes,
-            abundances=out_abundances,
-            ksize=auto_detected_ksize,
-            scale=auto_detected_scale,
-            name=name,
-        )
-        
-        logger.info(f"Exporting signature to: {output}")
-        out_sig.export(output)
-        logger.info("Signature export completed successfully.")
+        if not hybrid:
+            hash_to_abundance = counter.get_kmers()
+            out_hashes = np.array(list(hash_to_abundance.keys()))
+            out_abundances = np.array(list(hash_to_abundance.values()))
+            
+            logger.info("Creating output signature.")
+            out_sig = SnipeSig.create_from_hashes_abundances(
+                hashes=out_hashes,
+                abundances=out_abundances,
+                ksize=auto_detected_ksize,
+                scale=auto_detected_scale,
+                name=name,
+            )
+            
+            logger.info(f"Exporting signature to: {output}")
+            out_sig.export(output)
+            logger.info("Signature export completed successfully.")
+        else:
+            hashes = np.array(counter.get_hashes())
+            sample_counts = np.array(counter.get_sample_counts())
+            kmer_dosages = np.array(counter.get_kmer_dosages())
+            
+            assert len(hashes) == len(sample_counts) == len(kmer_dosages)
+            
+            logger.info("Creating output signatures.")
+            out_sig1 = SnipeSig.create_from_hashes_abundances(
+                hashes=hashes,
+                abundances=sample_counts,
+                ksize=auto_detected_ksize,
+                scale=auto_detected_scale,
+                name=f"{name}_sample_counts",
+            )
+            out_sig2 = SnipeSig.create_from_hashes_abundances(
+                hashes=hashes,
+                abundances=kmer_dosages,
+                ksize=auto_detected_ksize,
+                scale=auto_detected_scale,
+                name=f"{name}_kmer_dosages",
+            )
+            
+            logger.info(f"Exporting signatures to: {output}")
+            out_sig1.export(output.replace('.sig', '_sample_counts.sig'))
+            out_sig2.export(output.replace('.sig', '_kmer_dosages.sig'))
+            logger.info("Signatures export completed successfully")
+            
+            
+            
     except Exception as e:
         logger.exception(f"An error occurred: {e}")
         sys.exit(1)
+            

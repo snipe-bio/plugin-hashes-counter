@@ -182,6 +182,105 @@ public:
     }
 };
 
+
+class SamplesKmerDosageHybridCounter{
+
+public:
+
+    phmap::parallel_flat_hash_map<uint64_t, std::tuple<uint32_t, uint32_t>, std::hash<uint64_t>, std::equal_to<uint64_t>, std::allocator<std::pair<uint64_t, std::tuple<uint32_t, uint32_t>>>, 6, std::mutex> hash_to_count;
+
+    SamplesKmerDosageHybridCounter() {}
+
+    void add_hashes(const vector<uint64_t> &hashes, const vector<float> &abundances, float mean_abundance)
+    {
+        const float inv_mean_abundance = 1.0f / mean_abundance;
+        const size_t n = hashes.size();
+        const uint64_t additional_sample_count = 1;
+
+        for (size_t i = 0; i < n; i++)
+        {   
+            uint32_t kmer_dosage = abundances[i] * inv_mean_abundance;
+            // increment the count of the kmer and add the dosage. Insert if not set
+            auto it = hash_to_count.find(hashes[i]);
+            if (it == hash_to_count.end())
+            {
+                hash_to_count[hashes[i]] = std::make_tuple(1, kmer_dosage);
+            }
+            else
+            {
+                std::get<0>(it->second)++;
+                std::get<1>(it->second) += kmer_dosage;
+            }
+        }
+    }
+
+    uint64_t size()
+    {
+        return hash_to_count.size();
+    }
+
+    // round scores
+    uint64_t round_scores()
+    {
+        uint64_t skipped_hashes_after_rounding = 0;
+        for (auto it = hash_to_count.begin(); it != hash_to_count.end(); ++it)
+        {
+            uint32_t & count = std::get<0>(it->second);
+            // erase if the count is less than 2
+            if (count < 2)
+            {
+                skipped_hashes_after_rounding++;
+                hash_to_count.erase(it);
+            }
+        }
+        return skipped_hashes_after_rounding;
+    }
+
+    // get kmers with count and dosage
+    unordered_map<uint64_t, std::tuple<uint32_t, uint32_t>> get_kmers()
+    {
+        unordered_map<uint64_t, std::tuple<uint32_t, uint32_t>> result;
+        for (auto it = hash_to_count.begin(); it != hash_to_count.end(); ++it)
+        {
+            result[it->first] = it->second;
+        }
+        return result;
+    }
+
+    // get hashes only
+    vector<uint64_t> get_hashes()
+    {
+        vector<uint64_t> result;
+        for (auto it = hash_to_count.begin(); it != hash_to_count.end(); ++it)
+        {
+            result.push_back(it->first);
+        }
+        return result;
+    }
+
+    vector<uint32_t> get_sample_counts()
+    {
+        vector<uint32_t> result;
+        for (auto it = hash_to_count.begin(); it != hash_to_count.end(); ++it)
+        {
+            result.push_back(std::get<0>(it->second));
+        }
+        return result;
+    }
+
+    vector<uint32_t> get_kmer_dosages()
+    {
+        vector<uint32_t> result;
+        for (auto it = hash_to_count.begin(); it != hash_to_count.end(); ++it)
+        {
+            result.push_back(std::get<1>(it->second));
+        }
+        return result;
+    }
+
+};
+
+
 NB_MODULE(_hashes_counter_impl, m)
 {
     nb::class_<HashesCounter>(m, "HashesCounter")
@@ -206,4 +305,11 @@ NB_MODULE(_hashes_counter_impl, m)
         .def("get_kmers", &WeightedHashesCounterUncapped::get_kmers)
         .def("size", &WeightedHashesCounterUncapped::size)
         .def("keep_min_abundance", &WeightedHashesCounterUncapped::keep_min_abundance);
+
+    nb::class_<SamplesKmerDosageHybridCounter>(m, "SamplesKmerDosageHybridCounter")
+        .def(nb::init<>())
+        .def("add_hashes", &SamplesKmerDosageHybridCounter::add_hashes)
+        .def("round_scores", &SamplesKmerDosageHybridCounter::round_scores)
+        .def("get_kmers", &SamplesKmerDosageHybridCounter::get_kmers)
+        .def("size", &SamplesKmerDosageHybridCounter::size);
 }
