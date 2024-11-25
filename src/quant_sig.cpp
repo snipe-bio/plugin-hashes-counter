@@ -182,31 +182,43 @@ public:
     }
 };
 
-
-class SamplesKmerDosageHybridCounter{
+class SamplesKmerDosageHybridCounter
+{
 
 public:
-
-    phmap::parallel_flat_hash_map<uint64_t, std::tuple<uint32_t, uint32_t>, std::hash<uint64_t>, std::equal_to<uint64_t>, std::allocator<std::pair<uint64_t, std::tuple<uint32_t, uint32_t>>>, 6, std::mutex> hash_to_count;
+    // Updated to store kmer_dosage as float internally
+    phmap::parallel_flat_hash_map<uint64_t, std::tuple<uint32_t, float>,
+                                  std::hash<uint64_t>, std::equal_to<uint64_t>,
+                                  std::allocator<std::pair<uint64_t, std::tuple<uint32_t, float>>>,
+                                  6, std::mutex>
+        hash_to_count;
 
     SamplesKmerDosageHybridCounter() {}
 
     void add_hashes(const vector<uint64_t> &hashes, const vector<float> &abundances, float mean_abundance)
     {
+        if (hashes.size() != abundances.size())
+        {
+            throw std::invalid_argument("hashes and abundances vectors must be of the same size.");
+        }
+
         const float inv_mean_abundance = 1.0f / mean_abundance;
         const size_t n = hashes.size();
-        const uint64_t additional_sample_count = 1;
+        const uint32_t additional_sample_count = 1;
 
         for (size_t i = 0; i < n; i++)
-        {   
-            uint32_t kmer_dosage = abundances[i] * inv_mean_abundance;
-            // increment the count of the kmer and add the dosage. Insert if not set
-            auto it = hash_to_count.find(hashes[i]);
-            if (it == hash_to_count.end())
+        {
+            float kmer_dosage = abundances[i] * inv_mean_abundance;
+
+            // Optional: Handle cases where dosage might be negative or exceed expected ranges
+            if (kmer_dosage < 0.0f)
             {
-                hash_to_count[hashes[i]] = std::make_tuple(1, kmer_dosage);
+                throw std::invalid_argument("kmer_dosage cannot be negative.");
             }
-            else
+
+            // Use try_emplace to optimize insertion
+            auto [it, inserted] = hash_to_count.try_emplace(hashes[i], 1, kmer_dosage);
+            if (!inserted)
             {
                 std::get<0>(it->second)++;
                 std::get<1>(it->second) += kmer_dosage;
@@ -214,72 +226,78 @@ public:
         }
     }
 
-    uint64_t size()
+    uint64_t size() const
     {
         return hash_to_count.size();
     }
 
-    // round scores
+    // round scores and remove entries with count less than 2
     uint64_t round_scores()
     {
         uint64_t skipped_hashes_after_rounding = 0;
-        for (auto it = hash_to_count.begin(); it != hash_to_count.end(); ++it)
+        for (auto it = hash_to_count.begin(); it != hash_to_count.end();)
         {
-            uint32_t & count = std::get<0>(it->second);
-            // erase if the count is less than 2
+            uint32_t &count = std::get<0>(it->second);
             if (count < 2)
             {
                 skipped_hashes_after_rounding++;
-                hash_to_count.erase(it);
+                it = hash_to_count.erase(it);
+            }
+            else
+            {
+                ++it;
             }
         }
         return skipped_hashes_after_rounding;
     }
 
-    // get kmers with count and dosage
-    unordered_map<uint64_t, std::tuple<uint32_t, uint32_t>> get_kmers()
+    unordered_map<uint64_t, std::tuple<uint32_t, uint32_t>> get_kmers() const
     {
         unordered_map<uint64_t, std::tuple<uint32_t, uint32_t>> result;
-        for (auto it = hash_to_count.begin(); it != hash_to_count.end(); ++it)
+        result.reserve(hash_to_count.size()); // Optimize by reserving space
+        for (const auto &it : hash_to_count)
         {
-            result[it->first] = it->second;
+            // Convert float dosage to uint32_t, using rounding to nearest integer
+            uint32_t rounded_dosage = static_cast<uint32_t>(std::round(std::get<1>(it.second)));
+            result[it.first] = std::make_tuple(std::get<0>(it.second), rounded_dosage);
         }
         return result;
     }
 
-    // get hashes only
-    vector<uint64_t> get_hashes()
+    vector<uint64_t> get_hashes() const
     {
         vector<uint64_t> result;
-        for (auto it = hash_to_count.begin(); it != hash_to_count.end(); ++it)
+        result.reserve(hash_to_count.size());
+        for (const auto &it : hash_to_count)
         {
-            result.push_back(it->first);
+            result.push_back(it.first);
         }
         return result;
     }
 
-    vector<uint32_t> get_sample_counts()
+    vector<uint32_t> get_sample_counts() const
     {
         vector<uint32_t> result;
-        for (auto it = hash_to_count.begin(); it != hash_to_count.end(); ++it)
+        result.reserve(hash_to_count.size());
+        for (const auto &it : hash_to_count)
         {
-            result.push_back(std::get<0>(it->second));
+            result.push_back(std::get<0>(it.second));
         }
         return result;
     }
 
-    vector<uint32_t> get_kmer_dosages()
+    vector<uint32_t> get_kmer_dosages() const
     {
         vector<uint32_t> result;
-        for (auto it = hash_to_count.begin(); it != hash_to_count.end(); ++it)
+        result.reserve(hash_to_count.size());
+        for (const auto &it : hash_to_count)
         {
-            result.push_back(std::get<1>(it->second));
+            uint32_t rounded_dosage = static_cast<uint32_t>(std::round(std::get<1>(it.second)));
+            result.push_back(rounded_dosage);
         }
         return result;
     }
-
 };
-
 
 NB_MODULE(_hashes_counter_impl, m)
 {
