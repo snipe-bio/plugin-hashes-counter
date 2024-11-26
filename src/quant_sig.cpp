@@ -231,6 +231,7 @@ public:
         return hash_to_count.size();
     }
 
+    // Filteration
     uint64_t round_scores()
     {
         uint64_t skipped_hashes_after_rounding = 0;
@@ -239,7 +240,10 @@ public:
             uint32_t &count = std::get<0>(it->second);
             float dosage = std::get<1>(it->second);
 
-            if (count < 2 || dosage < 2.0f)
+            dosage *= 100.0f;
+            std::get<1>(it->second) = dosage;
+
+            if (count < 2 || dosage <= 0.5f)
             {
                 skipped_hashes_after_rounding++;
                 it = hash_to_count.erase(it);
